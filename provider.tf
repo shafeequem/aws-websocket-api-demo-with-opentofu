@@ -6,7 +6,7 @@ provider "aws" {
 terraform {
  backend "s3" {
    bucket = "opentofu-state-files"
-   key    = "tofu-state"
+   key    = "apiws-app/tofu.state"
    region = "us-east-1"
    profile  = "tofu-app"
  }
