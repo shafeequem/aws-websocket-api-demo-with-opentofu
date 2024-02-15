@@ -10,7 +10,7 @@ def lambda_handler(event, context):
     print("****")
     print(context)
     # TODO implement
-    dynamodb.put_item(TableName=table, Item={'ConnectionID':{'S':event['connectionId']},'UserID':{'N':event['UserID']}})
+    dynamodb.put_item(TableName=table, Item={'ConnectionID':{'S':event['requestContext']['connectionId']},'UserID':{'N':event['UserID']}})
     return {
         'statusCode': 200
     }
