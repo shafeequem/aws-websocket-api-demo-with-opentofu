@@ -1,3 +1,4 @@
+/*
 resource "aws_vpc" "main" {
   cidr_block = var.base_cidr_block
    tags = {
@@ -12,7 +13,7 @@ resource "aws_subnet" "az" {
   cidr_block = cidrsubnet(aws_vpc.main.cidr_block, 4, count.index+1)
 }
 
-
+*/
 data "aws_iam_policy_document" "ws_messenger_lambda_policy" {
   statement {
     actions = [
@@ -27,8 +28,14 @@ data "aws_iam_policy_document" "ws_messenger_lambda_policy" {
 
 data "archive_file" "ws_messenger_zip" {
   type        = "zip"
-  source_file = "${path.module}/lambda/messenger"
-  output_path = "${path.module}/messenger.zip"
+  source_file = "${path.module}/lambda/messenger/main.py"
+  output_path = "${path.module}/tmp/messenger.zip"
+}
+
+data "archive_file" "ws_authorizer_zip" {
+  type        = "zip"
+  source_file = "${path.module}/lambda/authorizer/main.py"
+  output_path = "${path.module}/tmp/authorizer.zip"
 }
 
 resource "aws_iam_policy" "ws_messenger_lambda_policy" {
@@ -66,8 +73,22 @@ resource "aws_lambda_function" "ws_messenger_lambda" {
   source_code_hash = data.archive_file.ws_messenger_zip.output_base64sha256
 }
 
+resource "aws_lambda_function" "ws_authorizer_lambda" {
+  filename         = data.archive_file.ws_authorizer_zip.output_path
+  function_name    = "ws-authorizer"
+  role             = aws_iam_role.ws_messenger_lambda_role.arn
+  handler          = "main"
+  runtime          = "python3.10"
+  source_code_hash = data.archive_file.ws_authorizer_zip.output_base64sha256
+}
+
 resource "aws_cloudwatch_log_group" "ws_messenger_logs" {
   name              = "/aws/lambda/${aws_lambda_function.ws_messenger_lambda.function_name}"
+  retention_in_days = 30
+}
+
+resource "aws_cloudwatch_log_group" "ws_authorizer_logs" {
+  name              = "/aws/lambda/${aws_lambda_function.ws_authorizer_lambda.function_name}"
   retention_in_days = 30
 }
 
@@ -77,7 +98,7 @@ data "aws_iam_policy_document" "ws_messenger_api_gateway_policy" {
       "lambda:InvokeFunction",
     ]
     effect    = "Allow"
-    resources = [aws_lambda_function.ws_messenger_lambda.arn]
+    resources = [aws_lambda_function.ws_messenger_lambda.arn, aws_lambda_function.ws_authorizer_lambda.arn]
   }
 }
 
@@ -113,6 +134,14 @@ resource "aws_apigatewayv2_api" "ws_messenger_api_gateway" {
   route_selection_expression = "$request.body.action"
 }
 
+resource "aws_apigatewayv2_authorizer" "ws_messenger_api_authorizer" {
+  api_id           = "${aws_apigatewayv2_api.ws_messenger_api_gateway.id}"
+  authorizer_type  = "REQUEST"
+  authorizer_uri   = "${aws_lambda_function.ws_authorizer_lambda.invoke_arn}"
+  identity_sources = ["route.request.header.Auth"]
+  name             = "ws-authorizer"
+}
+
 resource "aws_apigatewayv2_integration" "ws_messenger_api_integration" {
   api_id                    = aws_apigatewayv2_api.ws_messenger_api_gateway.id
   integration_type          = "AWS_PROXY"
@@ -128,6 +157,7 @@ resource "aws_apigatewayv2_integration_response" "ws_messenger_api_integration_r
   integration_response_key = "/200/"
 }
 
+/*
 resource "aws_apigatewayv2_route" "ws_messenger_api_default_route" {
   api_id    = aws_apigatewayv2_api.ws_messenger_api_gateway.id
   route_key = "$default"
@@ -139,25 +169,30 @@ resource "aws_apigatewayv2_route_response" "ws_messenger_api_default_route_respo
   route_id           = aws_apigatewayv2_route.ws_messenger_api_default_route.id
   route_response_key = "$default"
 }
+*/
 
 resource "aws_apigatewayv2_route" "ws_messenger_api_connect_route" {
   api_id    = aws_apigatewayv2_api.ws_messenger_api_gateway.id
   route_key = "$connect"
   target    = "integrations/${aws_apigatewayv2_integration.ws_messenger_api_integration.id}"
+  authorization_type = "CUSTOM"
+  authorizer_id = aws_apigatewayv2_authorizer.ws_messenger_api_authorizer.id
 }
 
+/*
 resource "aws_apigatewayv2_route_response" "ws_messenger_api_connect_route_response" {
   api_id             = aws_apigatewayv2_api.ws_messenger_api_gateway.id
   route_id           = aws_apigatewayv2_route.ws_messenger_api_connect_route.id
   route_response_key = "$default"
 }
+*/
 
 resource "aws_apigatewayv2_route" "ws_messenger_api_disconnect_route" {
   api_id    = aws_apigatewayv2_api.ws_messenger_api_gateway.id
   route_key = "$disconnect"
   target    = "integrations/${aws_apigatewayv2_integration.ws_messenger_api_integration.id}"
 }
-
+/*
 resource "aws_apigatewayv2_route_response" "ws_messenger_api_disconnect_route_response" {
   api_id             = aws_apigatewayv2_api.ws_messenger_api_gateway.id
   route_id           = aws_apigatewayv2_route.ws_messenger_api_disconnect_route.id
@@ -175,6 +210,7 @@ resource "aws_apigatewayv2_route_response" "ws_messenger_api_message_route_respo
   route_id           = aws_apigatewayv2_route.ws_messenger_api_message_route.id
   route_response_key = "$default"
 }
+*/
 
 resource "aws_apigatewayv2_stage" "ws_messenger_api_stage" {
   api_id      = aws_apigatewayv2_api.ws_messenger_api_gateway.id
