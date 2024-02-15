@@ -34,7 +34,7 @@ def lambda_handler(event, context):
     condition = {}
     condition['IpAddress'] = {}
 
-    if (queryStringParameters['authkey'] ==
+    if (queryStringParameters['key'] ==
             "xcvsdf" and queryStringParameters["QueryString1"] == "queryValue1"):
         response = generateAllow('me', event['methodArn'])
         print('authorized')
