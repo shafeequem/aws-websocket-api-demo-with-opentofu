@@ -1,19 +1,3 @@
-/*
-resource "aws_vpc" "main" {
-  cidr_block = var.base_cidr_block
-   tags = {
-    Name = "tofu-vpc"
-  }
-}
-
-resource "aws_subnet" "az" {
-  count = length(var.availability_zones)
-  availability_zone = var.availability_zones[count.index]
-  vpc_id = aws_vpc.main.id
-  cidr_block = cidrsubnet(aws_vpc.main.cidr_block, 4, count.index+1)
-}
-
-*/
 
 data "archive_file" "ws_messenger_zip" {
   type        = "zip"
@@ -42,6 +26,17 @@ data "aws_iam_policy_document" "ws_lambda_policy" {
     ]
     effect    = "Allow"
     resources = ["arn:aws:logs:*:*:*"]
+  }
+  statement {
+    actions = [
+      "dynamodb:BatchWriteItem",
+      "dynamodb:PutItem",
+      "dynamodb:UpdateItem",
+      "dynamodb:DeleteItem",
+      "dynamodb:DescribeTable"
+    ]
+    effect    = "Allow"
+    resources = [aws_dynamodb_table.ws_messenger_table.arn]
   }
 }
 
@@ -96,6 +91,12 @@ resource "aws_lambda_function" "ws_connect_lambda" {
   handler          = "main.lambda_handler"
   runtime          = "python3.10"
   source_code_hash = data.archive_file.ws_connect_zip.output_base64sha256
+
+  environment {
+    variables = {
+      table = "${aws_dynamodb_table.ws_messenger_table.id}"
+    }
+  }
 }
 
 resource "aws_cloudwatch_log_group" "ws_messenger_logs" {
@@ -182,27 +183,6 @@ resource "aws_apigatewayv2_integration" "ws_messenger_disconnect_api_integration
   integration_type = "MOCK"
 }
 
-/*
-resource "aws_apigatewayv2_integration_response" "ws_messenger_api_integration_response" {
-  api_id                   = aws_apigatewayv2_api.ws_messenger_api_gateway.id
-  integration_id           = aws_apigatewayv2_integration.ws_messenger_api_integration.id
-  integration_response_key = "/200/"
-}
-
-
-resource "aws_apigatewayv2_route" "ws_messenger_api_default_route" {
-  api_id    = aws_apigatewayv2_api.ws_messenger_api_gateway.id
-  route_key = "$default"
-  target    = "integrations/${aws_apigatewayv2_integration.ws_messenger_api_integration.id}"
-}
-
-resource "aws_apigatewayv2_route_response" "ws_messenger_api_default_route_response" {
-  api_id             = aws_apigatewayv2_api.ws_messenger_api_gateway.id
-  route_id           = aws_apigatewayv2_route.ws_messenger_api_default_route.id
-  route_response_key = "$default"
-}
-*/
-
 resource "aws_apigatewayv2_route" "ws_messenger_api_connect_route" {
   api_id    = aws_apigatewayv2_api.ws_messenger_api_gateway.id
   route_key = "$connect"
@@ -216,32 +196,6 @@ resource "aws_apigatewayv2_route" "ws_messenger_api_disconnect_route" {
   route_key = "$disconnect"
   target    = "integrations/${aws_apigatewayv2_integration.ws_messenger_disconnect_api_integration.id}"
 }
-
-/*
-resource "aws_apigatewayv2_route_response" "ws_messenger_api_connect_route_response" {
-  api_id             = aws_apigatewayv2_api.ws_messenger_api_gateway.id
-  route_id           = aws_apigatewayv2_route.ws_messenger_api_connect_route.id
-  route_response_key = "$default"
-}
-
-resource "aws_apigatewayv2_route_response" "ws_messenger_api_disconnect_route_response" {
-  api_id             = aws_apigatewayv2_api.ws_messenger_api_gateway.id
-  route_id           = aws_apigatewayv2_route.ws_messenger_api_disconnect_route.id
-  route_response_key = "$default"
-}
-
-resource "aws_apigatewayv2_route" "ws_messenger_api_message_route" {
-  api_id    = aws_apigatewayv2_api.ws_messenger_api_gateway.id
-  route_key = "MESSAGE"
-  target    = "integrations/${aws_apigatewayv2_integration.ws_messenger_api_integration.id}"
-}
-
-resource "aws_apigatewayv2_route_response" "ws_messenger_api_message_route_response" {
-  api_id             = aws_apigatewayv2_api.ws_messenger_api_gateway.id
-  route_id           = aws_apigatewayv2_route.ws_messenger_api_message_route.id
-  route_response_key = "$default"
-}
-*/
 
 resource "aws_apigatewayv2_stage" "ws_messenger_api_stage" {
   api_id      = aws_apigatewayv2_api.ws_messenger_api_gateway.id
@@ -263,4 +217,21 @@ resource "aws_lambda_permission" "ws_authorizer_lambda_permissions" {
   function_name = aws_lambda_function.ws_authorizer_lambda.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_apigatewayv2_api.ws_messenger_api_gateway.execution_arn}/*/*"
+}
+
+
+resource "aws_dynamodb_table" "ws_messenger_table" {
+  name           = "ws-messenger-table"
+  billing_mode   = "PAY_PER_REQUEST"
+  hash_key       = "ConnectionID"
+  range_key      = "UserID"
+
+  attribute {
+    name = "ConnectionID"
+    type = "S"
+  }
+  attribute {
+    name = "UserID"
+    type = "N"
+  }
 }
