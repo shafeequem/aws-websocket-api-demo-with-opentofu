@@ -17,6 +17,12 @@ data "archive_file" "ws_connect_zip" {
   output_path = "${path.module}/tmp/connect.zip"
 }
 
+data "archive_file" "ws_disconnect_zip" {
+  type        = "zip"
+  source_file = "${path.module}/lambda/disconnect/main.py"
+  output_path = "${path.module}/tmp/disconnect.zip"
+}
+
 data "aws_iam_policy_document" "ws_lambda_policy" {
   statement {
     actions = [
@@ -40,10 +46,30 @@ data "aws_iam_policy_document" "ws_lambda_policy" {
   }
 }
 
+data "aws_iam_policy_document" "ws_lambda_messenger_policy" {
+  statement {
+    actions = [
+      "dynamodb:Scan"
+    ]
+    effect    = "Allow"
+    resources = [aws_dynamodb_table.ws_messenger_table.arn]
+  }
+}
+
+data "aws_iam_policy" "apigw_invoke_access" {
+  name = "AmazonAPIGatewayInvokeFullAccess"
+}
+
 resource "aws_iam_policy" "ws_lambda_policy" {
   name   = "WsLambdaPolicy"
   path   = "/"
   policy = data.aws_iam_policy_document.ws_lambda_policy.json
+}
+
+resource "aws_iam_policy" "ws_lambda_messenger_policy" {
+  name   = "WsLambdaMessengerPolicy"
+  path   = "/"
+  policy = data.aws_iam_policy_document.ws_lambda_messenger_policy.json
 }
 
 resource "aws_iam_role" "ws_lambda_role" {
@@ -66,13 +92,39 @@ resource "aws_iam_role" "ws_lambda_role" {
   managed_policy_arns = [aws_iam_policy.ws_lambda_policy.arn]
 }
 
+resource "aws_iam_role" "ws_lambda_messenger_role" {
+  name = "WsLambdaMessengerRole"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Sid    = ""
+        Principal = {
+          Service = "lambda.amazonaws.com"
+        }
+      },
+    ]
+  })
+
+  managed_policy_arns = [aws_iam_policy.ws_lambda_policy.arn, aws_iam_policy.ws_lambda_messenger_policy.arn, data.aws_iam_policy.apigw_invoke_access.arn]
+}
+
 resource "aws_lambda_function" "ws_messenger_lambda" {
   filename         = data.archive_file.ws_messenger_zip.output_path
   function_name    = "ws-messenger"
-  role             = aws_iam_role.ws_lambda_role.arn
+  role             = aws_iam_role.ws_lambda_messenger_role.arn
   handler          = "main.lambda_handler"
   runtime          = "python3.10"
   source_code_hash = data.archive_file.ws_messenger_zip.output_base64sha256
+  environment {
+    variables = {
+      table             = "${aws_dynamodb_table.ws_messenger_table.id}",
+      api_endpoint_url  = "https://${aws_apigatewayv2_api.ws_messenger_api_gateway.id}.execute-api.${var.aws_region}.amazonaws.com/${aws_apigatewayv2_stage.ws_messenger_api_stage.name}"
+    }
+  }
 }
 
 resource "aws_lambda_function" "ws_authorizer_lambda" {
@@ -91,6 +143,21 @@ resource "aws_lambda_function" "ws_connect_lambda" {
   handler          = "main.lambda_handler"
   runtime          = "python3.10"
   source_code_hash = data.archive_file.ws_connect_zip.output_base64sha256
+
+  environment {
+    variables = {
+      table = "${aws_dynamodb_table.ws_messenger_table.id}"
+    }
+  }
+}
+
+resource "aws_lambda_function" "ws_disconnect_lambda" {
+  filename         = data.archive_file.ws_disconnect_zip.output_path
+  function_name    = "ws-disconnect"
+  role             = aws_iam_role.ws_lambda_role.arn
+  handler          = "main.lambda_handler"
+  runtime          = "python3.10"
+  source_code_hash = data.archive_file.ws_disconnect_zip.output_base64sha256
 
   environment {
     variables = {
@@ -123,7 +190,8 @@ data "aws_iam_policy_document" "ws_messenger_api_gateway_policy" {
     resources = [
       aws_lambda_function.ws_messenger_lambda.arn, 
       aws_lambda_function.ws_authorizer_lambda.arn,
-      aws_lambda_function.ws_connect_lambda.arn
+      aws_lambda_function.ws_connect_lambda.arn,
+      aws_lambda_function.ws_disconnect_lambda.arn
     ]
   }
 }
@@ -180,7 +248,12 @@ resource "aws_apigatewayv2_integration" "ws_messenger_connect_api_integration" {
 
 resource "aws_apigatewayv2_integration" "ws_messenger_disconnect_api_integration" {
   api_id                    = aws_apigatewayv2_api.ws_messenger_api_gateway.id
-  integration_type = "MOCK"
+  integration_type          = "AWS_PROXY"
+  integration_method       = "POST"
+  integration_uri           = aws_lambda_function.ws_disconnect_lambda.invoke_arn
+  credentials_arn           = aws_iam_role.ws_messenger_api_gateway_role.arn
+  content_handling_strategy = "CONVERT_TO_TEXT"
+  passthrough_behavior      = "WHEN_NO_MATCH"
 }
 
 resource "aws_apigatewayv2_route" "ws_messenger_api_connect_route" {
@@ -221,17 +294,11 @@ resource "aws_lambda_permission" "ws_authorizer_lambda_permissions" {
 
 
 resource "aws_dynamodb_table" "ws_messenger_table" {
-  name           = "ws-messenger-table"
+  name           = "ws-connections-table"
   billing_mode   = "PAY_PER_REQUEST"
   hash_key       = "ConnectionID"
-  range_key      = "UserID"
-
   attribute {
     name = "ConnectionID"
     type = "S"
-  }
-  attribute {
-    name = "UserID"
-    type = "N"
   }
 }

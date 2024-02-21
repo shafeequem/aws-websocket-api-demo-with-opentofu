@@ -4,13 +4,14 @@ import os
 
 dynamodb = boto3.client('dynamodb')
 table = os.environ['table']
+userid = '1233'
 
 def lambda_handler(event, context):
     print(event)
     print("****")
     print(context)
     # TODO implement
-    dynamodb.put_item(TableName=table, Item={'ConnectionID':{'S':event['requestContext']['connectionId']},'User':{'S':event['queryStringParameters']['user']}})
+    dynamodb.delete_item(TableName=table, Key={'ConnectionID':{'S':event['requestContext']['connectionId']}})
     return {
         'statusCode': 200
     }

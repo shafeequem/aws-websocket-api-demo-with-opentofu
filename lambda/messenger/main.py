@@ -1,15 +1,23 @@
 import json
-import urllib3
-import boto3
+import boto3 
+from boto3.dynamodb.conditions import Attr
+import os
 
-client = boto3.client('apigatewaymanagementapi', endpoint_url="xxxxxx.com/production")
+api_client = boto3.client('apigatewaymanagementapi', endpoint_url=os.environ['api_endpoint_url'])
+dynamodb = boto3.resource('dynamodb')
+table = dynamodb.Table(os.environ['table'])
 
 def lambda_handler(event, context):
     
     #Extract connectionId and desired message to send from input
-    connectionId = event["connectionId"]
+    user = event["user"]
     message = event["message"]
     
-    #Form response and post back to provided connectionId
-    response = client.post_to_connection(ConnectionId=connectionId, Data=json.dumps(message).encode('utf-8'))
-    print(response)
+    response = table.scan(
+        FilterExpression=Attr('User').eq(user)
+    )
+    items = response['Items']
+
+    for item in items:
+        api_client.post_to_connection(ConnectionId=item['ConnectionID'], Data=json.dumps(message).encode('utf-8'))
+        print (item)
