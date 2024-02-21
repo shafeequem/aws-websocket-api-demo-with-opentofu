@@ -332,12 +332,28 @@ resource "aws_s3_bucket_policy" "ws_app_bucket_policy" {
   POLICY
 }
 
-resource "aws_s3_object" "ws_app_files" {
-  for_each = fileset("./web/", "**")
+resource "aws_s3_object" "ws_app_files_assets" {
+  for_each = fileset("./web/assets/", "**")
   bucket   = aws_s3_bucket.ws_app.bucket
-  key      = each.value
-  source   = "./web/${each.value}"
-  etag     = filemd5("./web/${each.value}")
+  key      = "assets/${each.value}"
+  source   = "./web/assets/${each.value}"
+  etag     = filemd5("./web/assets/${each.value}")
+}
+
+resource "aws_s3_object" "ws_app_files_vendor" {
+  for_each = fileset("./web/vendor/", "**")
+  bucket   = aws_s3_bucket.ws_app.bucket
+  key      = "vendor/${each.value}"
+  source   = "./web/vendor/${each.value}"
+  etag     = filemd5("./web/vendor/${each.value}")
+}
+
+resource "aws_s3_object" "ws_app_files_index" {
+  bucket   = aws_s3_bucket.ws_app.bucket
+  key    = "index.html"
+  source = "./web/index.html"
+  etag = filemd5("./web/index.html")
+  content_type = "text/html"
 }
 
 resource "aws_s3_bucket_website_configuration" "ws_app" {
