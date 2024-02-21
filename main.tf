@@ -302,3 +302,88 @@ resource "aws_dynamodb_table" "ws_messenger_table" {
     type = "S"
   }
 }
+
+# S3 static website bucket
+resource "aws_s3_bucket" "ws_app" {
+}
+
+# S3 bucket policy
+resource "aws_s3_bucket_policy" "ws_app_bucket_policy" {
+  bucket = aws_s3_bucket.ws_app.id
+
+  policy = <<POLICY
+  {
+    "Id": "Policy",
+    "Statement": [
+      {
+        "Action": [
+          "s3:GetObject"
+        ],
+        "Effect": "Allow",
+        "Resource": "arn:aws:s3:::${aws_s3_bucket.ws_app.bucket}/*",
+        "Principal": {
+          "AWS": [
+            "*"
+          ]
+        }
+      }
+    ]
+  }
+  POLICY
+}
+
+resource "aws_s3_object" "ws_app_files" {
+  for_each = fileset("./web/", "**")
+  bucket   = aws_s3_bucket.ws_app.bucket
+  key      = each.value
+  source   = "./web/${each.value}"
+  etag     = filemd5("./web/${each.value}")
+}
+
+resource "aws_s3_bucket_website_configuration" "ws_app" {
+  bucket = aws_s3_bucket.ws_app.id
+
+  index_document {
+    suffix = "index.html"
+  }
+
+  error_document {
+    key = "index.html"
+  }
+}
+
+resource "aws_s3_bucket_versioning" "ws_app" {
+  bucket = aws_s3_bucket.ws_app.id
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+# S3 bucket ACL access
+resource "aws_s3_bucket_ownership_controls" "ws_app" {
+  bucket = aws_s3_bucket.ws_app.id
+  rule {
+    object_ownership = "BucketOwnerPreferred"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "ws_app" {
+  bucket = aws_s3_bucket.ws_app.id
+
+  block_public_acls       = false
+  block_public_policy     = false
+  ignore_public_acls      = false
+  restrict_public_buckets = false
+}
+
+resource "aws_s3_bucket_acl" "ws_app" {
+  depends_on = [
+    aws_s3_bucket_ownership_controls.ws_app,
+    aws_s3_bucket_public_access_block.ws_app,
+  ]
+  bucket = aws_s3_bucket.ws_app.id
+  acl    = "public-read"
+}
+
+
+
