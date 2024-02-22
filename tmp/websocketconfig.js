@@ -1,0 +1,1 @@
+var websocketServerLocation = '${socket_address_to_replace}?key=xcvsdf&user=';

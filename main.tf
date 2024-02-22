@@ -1,12 +1,4 @@
 
-locals {
-  content_type_map = {
-   "js" = "application/json"
-   "html" = "text/html"
-   "css"  = "text/css"
-  }
-}
-
 data "archive_file" "ws_messenger_zip" {
   type        = "zip"
   source_file = "${path.module}/lambda/messenger/main.py"
@@ -340,32 +332,64 @@ resource "aws_s3_bucket_policy" "ws_app_bucket_policy" {
   POLICY
 }
 
+locals {
+  content_type_map = {
+    "txt"    = "text/plain; charset=utf-8"
+    "html"   = "text/html; charset=utf-8"
+    "htm"    = "text/html; charset=utf-8"
+    "xhtml"  = "application/xhtml+xml"
+    "css"    = "text/css; charset=utf-8"
+    "js"     = "application/javascript"
+    "xml"    = "application/xml"
+    "json"   = "application/json"
+    "jsonld" = "application/ld+json"
+    "gif"    = "image/gif"
+    "jpeg"   = "image/jpeg"
+    "jpg"    = "image/jpeg"
+    "png"    = "image/png"
+    "svg"    = "image/svg"
+    "webp"   = "image/webp"
+    "weba"   = "audio/webm"
+    "webm"   = "video/webm"
+    "3gp"    = "video/3gpp"
+    "3g2"    = "video/3gpp2"
+    "pdf"    = "application/pdf"
+    "swf"    = "application/x-shockwave-flash"
+    "atom"   = "application/atom+xml"
+    "rss"    = "application/rss+xml"
+    "ico"    = "image/vndmicrosofticon"
+    "jar"    = "application/java-archive"
+    "ttf"    = "font/ttf"
+    "otf"    = "font/otf"
+    "eot"    = "application/vndms-fontobject"
+    "woff"   = "font/woff"
+    "woff2"  = "font/woff2"
+  }
+}
+
 resource "aws_s3_object" "ws_app_files_assets" {
   for_each = fileset("./web/", "**")
   bucket   = aws_s3_bucket.ws_app.bucket
   key      = "${each.value}"
   source   = "./web/${each.value}"
   etag     = filemd5("./web/${each.value}")
-  content_type = lookup(local.content_type_map, split(".", "${each.value}")[1], "text/html")
+  content_type = lookup(local.content_type_map, element(split(".", "${each.value}"), length(split(".", "${each.value}")) - 1), "binary/octet-stream")
 }
 
-/*
-resource "aws_s3_object" "ws_app_files_vendor" {
-  for_each = fileset("./web/vendor/", "**")
+resource "aws_s3_object" "websocket_js" {
   bucket   = aws_s3_bucket.ws_app.bucket
-  key      = "vendor/${each.value}"
-  source   = "./web/vendor/${each.value}"
-  etag     = filemd5("./web/vendor/${each.value}")
+  key      = "assets/js/websocketconfig.js"
+  content  = data.template_file.websocket_js.rendered
+  content_type = "application/javascript"
+  etag     = md5(data.template_file.websocket_js.rendered)
 }
 
-resource "aws_s3_object" "ws_app_files_index" {
-  bucket   = aws_s3_bucket.ws_app.bucket
-  key    = "index.html"
-  source = "./web/index.html"
-  etag = filemd5("./web/index.html")
-  content_type = "text/html"
+data "template_file" "websocket_js" {
+  template = "${file("${path.module}/tmp/websocketconfig.js")}"
+  vars = {
+    socket_address_to_replace  = "${aws_apigatewayv2_stage.ws_messenger_api_stage.invoke_url}"
+  }
 }
-*/
 
 resource "aws_s3_bucket_website_configuration" "ws_app" {
   bucket = aws_s3_bucket.ws_app.id
