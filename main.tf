@@ -1,4 +1,12 @@
 
+locals {
+  content_type_map = {
+   "js" = "application/json"
+   "html" = "text/html"
+   "css"  = "text/css"
+  }
+}
+
 data "archive_file" "ws_messenger_zip" {
   type        = "zip"
   source_file = "${path.module}/lambda/messenger/main.py"
@@ -333,13 +341,15 @@ resource "aws_s3_bucket_policy" "ws_app_bucket_policy" {
 }
 
 resource "aws_s3_object" "ws_app_files_assets" {
-  for_each = fileset("./web/assets/", "**")
+  for_each = fileset("./web/", "**")
   bucket   = aws_s3_bucket.ws_app.bucket
-  key      = "assets/${each.value}"
-  source   = "./web/assets/${each.value}"
-  etag     = filemd5("./web/assets/${each.value}")
+  key      = "${each.value}"
+  source   = "./web/${each.value}"
+  etag     = filemd5("./web/${each.value}")
+  content_type = lookup(local.content_type_map, split(".", "${each.value}")[1], "text/html")
 }
 
+/*
 resource "aws_s3_object" "ws_app_files_vendor" {
   for_each = fileset("./web/vendor/", "**")
   bucket   = aws_s3_bucket.ws_app.bucket
@@ -355,6 +365,7 @@ resource "aws_s3_object" "ws_app_files_index" {
   etag = filemd5("./web/index.html")
   content_type = "text/html"
 }
+*/
 
 resource "aws_s3_bucket_website_configuration" "ws_app" {
   bucket = aws_s3_bucket.ws_app.id
