@@ -1,4 +1,4 @@
-# Real-Time Notification System using AWS WebSocket API with OpenTofu
+# Real-Time Communication System using AWS WebSocket API with OpenTofu
 
 To understand the solution design and it's compenents, [Read my article on Medium](https://medium.com/@shafeequem/real-time-notification-system-using-aws-websocket-api-with-opentofu-d0e69fd6908c).
 
