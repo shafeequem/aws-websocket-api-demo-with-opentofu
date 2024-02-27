@@ -55,7 +55,14 @@ tofu init
 tofu plan
 tofu apply
 ```
+### Test the Solution
+Once resources are deployed and tested the solution is successful, delete the resources using the following command.
+Open the newly created website by OpenTofu. URL for the website will be displayed as an output once the OpenTofu apply execution is completed successfully.
+Enter your name in the ‘Name’ field and Submit.
+Open the ‘Messenger Lambda’ in the AWS console and invoke the function with a message along with the name given on the website.
+The provided message in the backend now will be displayed on the front-end website.
 
+### Delete Resources
 Once resources are deployed and tested the solution is successful, delete the resources using the following command.
 ```
 tofu destroy
