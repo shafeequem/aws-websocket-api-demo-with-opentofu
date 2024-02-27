@@ -2,6 +2,7 @@
 
 
 # open powershell and enter following commands
+```
 $TOFU_VERSION="1.6.0-alpha2"
 $TARGET=Join-Path $env:LOCALAPPDATA OpenTofu
 New-Item -ItemType Directory -Path $TARGET
@@ -12,7 +13,7 @@ Remove-Item "tofu_${TOFU_VERSION}_windows_amd64.zip"
 $TOFU_PATH=Join-Path $TARGET tofu.exe
 Pop-Location
 echo "OpenTofu is now available at ${TOFU_PATH}. Please add it to your path for easier access."
-
+```
 
 Note down ${TOFU_PATH}.
 
