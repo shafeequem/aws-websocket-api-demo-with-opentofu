@@ -30,14 +30,18 @@ If you see either .bashrc or .bash_profile, open it with a text editor. If you d
 ```
 touch ~/.bashrc
 ```
-Open the .bashrc or .bash_profile file with a text editor. For example:
-
+Open the .bashrc or .bash_profile file with a text editor.
+```
 nano ~/.bashrc
-# Add the following line to the file, replacing the path with your actual path, Refer that noted ${TOFU_PATH}:
-
+```
+Add the following line to the file, replacing the path with your actual path, Refer that noted ${TOFU_PATH}:
+```
 alias tofu='/c/Users/{Username}/AppData/Local/OpenTofu/tofu.exe'
-# Save and exit the text editor.
-
-# Restart Git Bash or run source ~/.bashrc to apply the changes to the current session.
+```
+Save and exit the text editor.
+Restart Git Bash or run source ~/.bashrc to apply the changes to the current session.
+```
+source ~/.bashrc
+```
 
 Now, when you type tofu init in Git Bash, it should execute /usr/local/bin/opentofu.exe init. Keep in mind that Git Bash uses a Bash shell, so the syntax for defining aliases is different from PowerShell.
