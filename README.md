@@ -1,7 +1,7 @@
 # opentofu-with-aws
 
 
-### open powershell and enter following commands
+### Install OpenTofu using Windows Powershell
 ```
 $TOFU_VERSION="1.6.0-alpha2"
 $TARGET=Join-Path $env:LOCALAPPDATA OpenTofu
