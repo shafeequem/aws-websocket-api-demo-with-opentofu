@@ -1,7 +1,7 @@
 # opentofu-with-aws
 
 
-# open powershell and enter following commands
+### open powershell and enter following commands
 ```
 $TOFU_VERSION="1.6.0-alpha2"
 $TARGET=Join-Path $env:LOCALAPPDATA OpenTofu
@@ -18,17 +18,19 @@ echo "OpenTofu is now available at ${TOFU_PATH}. Please add it to your path for 
 Note down ${TOFU_PATH}.
 
 
-# Gitbash settings
+### Gitbash settings
 Open Git Bash.
 
 Check if you already have a .bashrc or .bash_profile file. You can do this by running the following commands:
-
+```
 ls -a ~
-# This will list all files in your home directory, including hidden files.
-# If you see either .bashrc or .bash_profile, open it with a text editor. If you don't see either file, you can create one. For example:
-
+```
+This will list all files in your home directory, including hidden files.
+If you see either .bashrc or .bash_profile, open it with a text editor. If you don't see either file, you can create one by following command.
+```
 touch ~/.bashrc
-# Open the .bashrc or .bash_profile file with a text editor. For example:
+```
+Open the .bashrc or .bash_profile file with a text editor. For example:
 
 nano ~/.bashrc
 # Add the following line to the file, replacing the path with your actual path, Refer that noted ${TOFU_PATH}:
