@@ -18,8 +18,8 @@ echo "OpenTofu is now available at ${TOFU_PATH}. Please add it to your path for 
 Note down ${TOFU_PATH}.
 
 
-### Gitbash settings
-Open Git Bash.
+### Gitbash Settings for OpenTofu
+Install and Open Git Bash.
 
 Check if you already have a .bashrc or .bash_profile file. You can do this by running the following commands:
 ```
