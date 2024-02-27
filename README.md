@@ -1,6 +1,6 @@
 # Real-Time Notification System using AWS WebSocket API with OpenTofu
 
-I wrote an article on Medium describing the solution design and it's compenents. [Read here](https://medium.com/@shafeequem/real-time-notification-system-using-aws-websocket-api-with-opentofu-d0e69fd6908c).
+To understand the solution design and it's compenents, [Read my article on Medium](https://medium.com/@shafeequem/real-time-notification-system-using-aws-websocket-api-with-opentofu-d0e69fd6908c).
 
 
 ### Install OpenTofu using Windows Powershell
