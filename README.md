@@ -45,3 +45,18 @@ source ~/.bashrc
 ```
 
 Now, when you type tofu init in Git Bash, it should execute /usr/local/bin/opentofu.exe init. Keep in mind that Git Bash uses a Bash shell, so the syntax for defining aliases is different from PowerShell.
+
+### Deploy Resources
+Clone the Repository into your system. Open the Gitbash terminal from the directory 'aws-websocket-api-demo-with-opentofu'.
+Enter the following commands in GitBash to deploy the resources using OpenTofu.
+
+```
+tofu init
+tofu plan
+tofu apply
+```
+
+Once resources are deployed and tested the solution is successful, delete the resources using the following command.
+```
+tofu destroy
+```
